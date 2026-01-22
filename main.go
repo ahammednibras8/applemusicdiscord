@@ -454,9 +454,9 @@ func main() {
 
 	bridge := NewBridge()
 
-	// Connect to Discord
+	// Connect to Discord (non-fatal, will retry in loop)
 	if err := bridge.Connect(); err != nil {
-		log.Fatalf("❌ Failed to connect to Discord: %v", err)
+		log.Printf("⚠️  Initial Discord connection failed: %v (will retry)", err)
 	}
 
 	// Setup graceful shutdown
@@ -494,9 +494,19 @@ func main() {
 
 // pollAndUpdate checks Apple Music state and updates Discord accordingly
 func pollAndUpdate(bridge *Bridge) {
+	// Try to connect if we aren't already
+	if !bridge.connected {
+		if err := bridge.Connect(); err != nil {
+			// Don't log spam every 10s, maybe just debug or silence
+			// We'll keep it silent to avoid log flooding unless we want to debug
+			return 
+		}
+	}
+
 	state, err := GetPlayerState()
 	if err != nil {
-		log.Printf("⚠️  Error checking player state: %v", err)
+		// Also silence this slightly to avoid log flooding in background
+		// log.Printf("⚠️  Error checking player state: %v", err) 
 		return
 	}
 
